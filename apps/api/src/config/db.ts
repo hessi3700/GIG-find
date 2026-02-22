@@ -3,7 +3,10 @@ import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+// Safe in Worker bundle where import.meta.url may be undefined (we never call connectDb/getDb there)
+const __dirname = typeof import.meta.url === 'string'
+  ? dirname(fileURLToPath(import.meta.url))
+  : '';
 
 let db: Database.Database | null = null;
 

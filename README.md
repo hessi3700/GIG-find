@@ -6,7 +6,7 @@ A resume-ready gig board: post gigs, apply, search/filter, and message. Built wi
 
 ## Deploy online
 
-To host the app on the internet: **API on [Fly.io](https://fly.io)** (with persistent SQLite) and **frontend on [Cloudflare Pages](https://pages.cloudflare.com)**. Step-by-step instructions: **[DEPLOY.md](DEPLOY.md)**.
+To host the app online: **API on [Cloudflare Workers](https://workers.cloudflare.com)** (D1 database) or **Fly.io** (SQLite file), plus **frontend on [Cloudflare Pages](https://pages.cloudflare.com)**. Step-by-step: **[DEPLOY.md](DEPLOY.md)**.
 
 ## Features
 
@@ -123,11 +123,13 @@ This creates 50 users, 150 gigs, 350 applications, and 300 messages. **All seed 
    npm install
    ```
 
-2. Set secrets (replace with your values). You need at least `JWT_SECRET`. For a DB file path (if your Worker runtime supports it), set `DATABASE_PATH`:
+2. Create a D1 database, add its `database_id` to `wrangler.toml` (see [DEPLOY.md](DEPLOY.md)), apply the schema, and set `JWT_SECRET`:
 
    ```bash
+   npx wrangler d1 create gigfind-db
+   # Edit wrangler.toml with the database_id, then:
+   npx wrangler d1 execute gigfind-db --remote --file=./src/db/schema.sql
    npx wrangler secret put JWT_SECRET
-   # Optional: npx wrangler secret put DATABASE_PATH
    ```
 
 3. Deploy:

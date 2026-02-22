@@ -1,14 +1,17 @@
 # Deploy Gig Finder Online
 
-This guide gets the app live with **API on Fly.io** (persistent SQLite) and **frontend on Cloudflare Pages**.
+You can run the app with:
+
+- **Option A:** **API on Cloudflare Workers** (D1 database) + **frontend on Cloudflare Pages** — all on Cloudflare.
+- **Option B:** **API on Fly.io** (persistent SQLite file) + **frontend on Cloudflare Pages**.
 
 ---
 
 ## Prerequisites
 
 - A [GitHub](https://github.com) account
-- A [Fly.io](https://fly.io) account (free tier)
 - A [Cloudflare](https://cloudflare.com) account (free)
+- For Option B only: a [Fly.io](https://fly.io) account (free tier)
 
 ---
 
@@ -29,7 +32,74 @@ git push -u origin main
 
 ---
 
-## Step 2: Deploy the API (Fly.io)
+## Step 2: Deploy the API
+
+### Option A: API as Cloudflare Worker (D1)
+
+The backend runs on Cloudflare Workers and uses **D1** (SQLite at the edge). No file storage; same schema as the file-based SQLite.
+
+1. **Create a D1 database**
+
+   From the project root or `apps/api`:
+
+   ```bash
+   cd apps/api
+   npx wrangler d1 create gigfind-db
+   ```
+
+   Copy the **database_id** from the output.
+
+2. **Wire the Worker to D1**
+
+   Edit `apps/api/wrangler.toml` and set the `database_id` under `[[d1_databases]]` to the value you copied (replace `YOUR_D1_DATABASE_ID`).
+
+3. **Apply the schema to D1**
+
+   Run the schema against your new database (local or remote):
+
+   ```bash
+   npx wrangler d1 execute gigfind-db --remote --file=./src/db/schema.sql
+   ```
+
+   For local dev (e.g. `wrangler dev`), also run:
+
+   ```bash
+   npx wrangler d1 execute gigfind-db --local --file=./src/db/schema.sql
+   ```
+
+4. **Set the JWT secret**
+
+   ```bash
+   npx wrangler secret put JWT_SECRET
+   ```
+
+   Paste a secure value (e.g. from `openssl rand -base64 32`). For local dev you can use `.dev.vars` (e.g. `JWT_SECRET=your-secret`) and add `.dev.vars` to `.gitignore` if not already.
+
+5. **Deploy the Worker**
+
+   ```bash
+   npx wrangler deploy
+   ```
+
+   Note the Worker URL, e.g. **`https://gig-find-api.<your-subdomain>.workers.dev`**.
+
+6. **Point the frontend at the Worker**
+
+   When deploying the frontend (Step 3), set **VITE_API_URL** to this Worker URL (e.g. `https://gig-find-api.<your-subdomain>.workers.dev`).
+
+**Optional: seed D1 with example data** — From `apps/api`, generate the seed SQL (if you haven’t already) and run it against your remote D1 database. All seed users have password `password123`.
+
+   ```bash
+   cd apps/api
+   npm run seed:d1:gen
+   npx wrangler d1 execute gigfind-db --remote --file=seed-d1.sql
+   ```
+
+   This inserts 50 users, 150 gigs, 350 applications, and 300 messages. If the schema isn’t applied yet, run the schema first: `npx wrangler d1 execute gigfind-db --remote --file=src/db/schema.sql`.
+
+---
+
+### Option B: Deploy the API (Fly.io)
 
 Fly.io gives you a small VM with **persistent storage**, so the SQLite database survives restarts and redeploys.
 
@@ -118,6 +188,40 @@ curl https://gig-find-api.fly.dev/api/health
 
 When the build finishes, your site will be at **`https://gig-find.pages.dev`** (or the name you chose).
 
+### Alternative: Deploy the frontend (GitHub Pages)
+
+To host the frontend on GitHub Pages from the **`gh-pages`** branch:
+
+1. **Set the API URL for the build** (from repo root):
+
+   ```bash
+   cd apps/web
+   echo "VITE_API_URL=https://your-api-url.workers.dev" > .env.production
+   cd ../..
+   ```
+
+   Use your real API URL (Worker or Fly). Commit `.env.production` only if it has no secrets (the URL is public).
+
+2. **Run the deployment script** (from repo root):
+
+   - **Project site** (URL will be `https://<username>.github.io/<repo-name>/`): set the repo name so asset paths are correct, then deploy:
+     ```bash
+     npm install
+     GITHUB_PAGES_REPO=GIG-find npm run deploy:pages
+     ```
+     Use your actual repo name instead of `GIG-find` if different.
+
+   - **User/org site** (URL will be `https://<username>.github.io/`): run without the variable:
+     ```bash
+     npm run deploy:pages
+     ```
+
+   The script builds `apps/web`, adds `404.html` and `.nojekyll` for SPA routing, and pushes the contents of `apps/web/dist` to the **`gh-pages`** branch.
+
+3. **Enable GitHub Pages** in the repo: **Settings → Pages → Build and deployment → Source**: choose **Deploy from a branch**. **Branch:** `gh-pages`, **Folder:** `/ (root)`. Save.
+
+Open the site at **`https://<username>.github.io/`** (user site) or **`https://<username>.github.io/<repo-name>/`** (project site).
+
 ---
 
 ## Step 4: Optional — seed data on production
@@ -128,12 +232,12 @@ To add example data on the live API, you can run the seed script **locally** and
 
 ## Summary
 
-| Part      | URL example                          |
-|-----------|--------------------------------------|
-| Frontend  | `https://gig-find.pages.dev`         |
-| API       | `https://gig-find-api.fly.dev`        |
+| Part      | URL example (Worker)                    | URL example (Fly)                |
+|-----------|------------------------------------------|----------------------------------|
+| Frontend  | `https://gig-find.pages.dev`             | same                             |
+| API       | `https://gig-find-api.<sub>.workers.dev` | `https://gig-find-api.fly.dev`   |
 
-Set **VITE_API_URL** in Cloudflare Pages to your Fly API URL so the frontend talks to your API.
+Set **VITE_API_URL** in Cloudflare Pages to your API URL (Worker or Fly) so the frontend talks to your API.
 
 ---
 

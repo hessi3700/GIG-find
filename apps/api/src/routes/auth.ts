@@ -22,12 +22,12 @@ const loginSchema = z.object({
 router.post('/register', validateBody(registerSchema), async (req, res) => {
   try {
     const { email, password, name } = req.body as z.infer<typeof registerSchema>;
-    const existing = findUserByEmail(email);
+    const existing = await findUserByEmail(email);
     if (existing) {
       return res.status(409).json({ success: false, error: 'Email already registered' });
     }
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = createUser({ email, passwordHash, name });
+    const user = await createUser({ email, passwordHash, name });
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       JWT_SECRET,
@@ -48,7 +48,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
 router.post('/login', validateBody(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body as z.infer<typeof loginSchema>;
-    const user = findUserByEmail(email, true);
+    const user = await findUserByEmail(email, true);
     if (!user || !user.password_hash) {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }

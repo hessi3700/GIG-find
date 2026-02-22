@@ -3,10 +3,14 @@ main = "src/worker.ts"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat", "enable_nodejs_http_server_modules"]
 
-# Secrets: set via `wrangler secret put MONGODB_URI` and `wrangler secret put JWT_SECRET`
-# For local dev use .dev.vars (not committed):
-# MONGODB_URI=...
-# JWT_SECRET=...
+# D1: create DB with `npx wrangler d1 create gigfind-db` then paste database_id below
+[[d1_databases]]
+binding = "DB"
+database_name = "gigfind-db"
+database_id = "2516c330-8aa8-47f4-ad2c-91a13f8ed469"
+
+# Secrets: set via `wrangler secret put JWT_SECRET`
+# For local dev use .dev.vars (not committed): JWT_SECRET=...
 
 [vars]
 # Optional: add non-secret env here

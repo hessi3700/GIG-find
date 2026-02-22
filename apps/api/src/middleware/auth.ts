@@ -26,7 +26,7 @@ export async function authenticate(
   const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthPayload;
-    const user = getUserById(decoded.userId);
+    const user = await getUserById(decoded.userId);
     if (!user) {
       res.status(401).json({ success: false, error: 'User not found' });
       return;

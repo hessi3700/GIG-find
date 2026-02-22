@@ -51,7 +51,7 @@ function toMessageResponse(m: {
 
 router.get('/', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const messages = listMessagesByUser(req.user!.userId);
+    const messages = await listMessagesByUser(req.user!.userId);
     const byConversation = new Map<string, typeof messages>();
     for (const m of messages) {
       const cid = m.conversation_id ?? getConversationId(m.sender_id, m.receiver_id);
@@ -71,7 +71,7 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res) => {
 
 router.get('/:conversationId', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const messages = listMessagesByConversation(req.params.conversationId, req.user!.userId);
+    const messages = await listMessagesByConversation(req.params.conversationId, req.user!.userId);
     res.json({ success: true, data: messages.map(toMessageResponse) });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch conversation' });
@@ -81,12 +81,12 @@ router.get('/:conversationId', authenticate, async (req: AuthenticatedRequest, r
 router.post('/', authenticate, validateBody(sendMessageSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const { gigId, receiverId, body, conversationId } = req.body as z.infer<typeof sendMessageSchema>;
-    const gig = getGigById(gigId);
+    const gig = await getGigById(gigId);
     if (!gig) {
       return res.status(404).json({ success: false, error: 'Gig not found' });
     }
     const isOwner = gig.created_by === req.user!.userId;
-    const isApplicant = hasApplication(gigId, req.user!.userId);
+    const isApplicant = await hasApplication(gigId, req.user!.userId);
     if (!isOwner && !isApplicant) {
       return res.status(403).json({ success: false, error: 'Only gig owner or applicants can message' });
     }
@@ -94,14 +94,14 @@ router.post('/', authenticate, validateBody(sendMessageSchema), async (req: Auth
       return res.status(403).json({ success: false, error: 'Applicants can only message the gig owner' });
     }
     const cid = conversationId ?? getConversationId(req.user!.userId, receiverId);
-    const message = createMessage({
+    const message = await createMessage({
       gigId,
       senderId: req.user!.userId,
       receiverId,
       body,
       conversationId: cid,
     });
-    const populated = getMessageWithDetails(message.id);
+    const populated = await getMessageWithDetails(message.id);
     res.status(201).json({
       success: true,
       data: populated ? toMessageResponse(populated) : toMessageResponse({ ...message, gig_title: gig.title }),

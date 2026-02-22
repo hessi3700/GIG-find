@@ -10,7 +10,7 @@ function toUserResponse(row: { id: string; email: string; name: string; created_
 
 router.get('/me', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const user = getUserById(req.user!.userId);
+    const user = await getUserById(req.user!.userId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -22,7 +22,7 @@ router.get('/me', authenticate, async (req: AuthenticatedRequest, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const user = getUserById(req.params.id);
+    const user = await getUserById(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }

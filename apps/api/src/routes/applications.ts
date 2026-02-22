@@ -82,7 +82,7 @@ router.post(
     try {
       const { gigId } = req.params;
       const { message } = req.body as z.infer<typeof createApplicationSchema>;
-      const gig = getGigById(gigId);
+      const gig = await getGigById(gigId);
       if (!gig) {
         return res.status(404).json({ success: false, error: 'Gig not found' });
       }
@@ -92,10 +92,10 @@ router.post(
       if (gig.created_by === req.user!.userId) {
         return res.status(400).json({ success: false, error: 'Cannot apply to your own gig' });
       }
-      if (hasApplication(gigId, req.user!.userId)) {
+      if (await hasApplication(gigId, req.user!.userId)) {
         return res.status(409).json({ success: false, error: 'Already applied to this gig' });
       }
-      const application = createApplication({
+      const application = await createApplication({
         gigId,
         applicantId: req.user!.userId,
         message,
@@ -103,7 +103,7 @@ router.post(
       if (!application) {
         return res.status(500).json({ success: false, error: 'Failed to create application' });
       }
-      const populated = getApplicationWithDetails(application.id);
+      const populated = await getApplicationWithDetails(application.id);
       res.status(201).json({ success: true, data: populated ? toAppResponse(populated) : toAppResponse(application) });
     } catch (err) {
       res.status(500).json({ success: false, error: 'Failed to create application' });
@@ -113,11 +113,11 @@ router.post(
 
 router.get('/gigs/:gigId/applications', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const gig = getGigById(req.params.gigId);
+    const gig = await getGigById(req.params.gigId);
     if (!gig || gig.created_by !== req.user!.userId) {
       return res.status(404).json({ success: false, error: 'Gig not found or not owner' });
     }
-    const applications = listApplicationsByGig(gig.id);
+    const applications = await listApplicationsByGig(gig.id);
     res.json({ success: true, data: applications.map(toAppResponse) });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch applications' });
@@ -126,7 +126,7 @@ router.get('/gigs/:gigId/applications', authenticate, async (req: AuthenticatedR
 
 router.get('/applications/me', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const applications = listApplicationsByApplicant(req.user!.userId);
+    const applications = await listApplicationsByApplicant(req.user!.userId);
     res.json({ success: true, data: applications.map(toAppResponseMy) });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch applications' });
@@ -139,20 +139,20 @@ router.patch(
   validateBody(updateApplicationSchema),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const application = getApplicationById(req.params.id);
+      const application = await getApplicationById(req.params.id);
       if (!application) {
         return res.status(404).json({ success: false, error: 'Application not found' });
       }
-      const gig = getGigById(application.gig_id);
+      const gig = await getGigById(application.gig_id);
       if (!gig || gig.created_by !== req.user!.userId) {
         return res.status(403).json({ success: false, error: 'Not the gig owner' });
       }
       const { status } = req.body as z.infer<typeof updateApplicationSchema>;
-      const updated = updateApplicationStatus(application.id, status, req.user!.userId);
+      const updated = await updateApplicationStatus(application.id, status, req.user!.userId);
       if (!updated) {
         return res.status(500).json({ success: false, error: 'Failed to update application' });
       }
-      const populated = getApplicationWithDetails(updated.id);
+      const populated = await getApplicationWithDetails(updated.id);
       res.json({ success: true, data: populated ? toAppResponse(populated) : toAppResponse(updated) });
     } catch (err) {
       res.status(500).json({ success: false, error: 'Failed to update application' });

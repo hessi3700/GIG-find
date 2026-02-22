@@ -11,6 +11,10 @@ export function createApp(): express.Express {
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
 
+  app.get('/', (_req, res) => {
+    res.json({ success: true, message: 'Gig Finder API', docs: '/api/health' });
+  });
+
   app.get('/api/health', (_req, res) => {
     res.json({ success: true, message: 'Gig Finder API' });
   });

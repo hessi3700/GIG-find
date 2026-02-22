@@ -67,7 +67,7 @@ function toGigResponse(g: {
 
 router.get('/mine', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const gigs = listGigsByUser(req.user!.userId);
+    const gigs = await listGigsByUser(req.user!.userId);
     res.json({ success: true, data: gigs.map(toGigResponse) });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch gigs' });
@@ -81,7 +81,7 @@ router.get(
     try {
       const q = (req as Request & { query: z.infer<typeof listGigsQuerySchema> }).query;
       const { category, minPay, maxPay, search, page, limit } = q;
-      const { gigs, total } = listGigs({
+      const { gigs, total } = await listGigs({
         category,
         minPay,
         maxPay,
@@ -107,11 +107,11 @@ router.get(
 
 router.get('/:id', async (req, res) => {
   try {
-    const gig = getGigById(req.params.id);
+    const gig = await getGigById(req.params.id);
     if (!gig) {
       return res.status(404).json({ success: false, error: 'Gig not found' });
     }
-    const creatorUser = getUserById(gig.created_by);
+    const creatorUser = await getUserById(gig.created_by);
     res.json({
       success: true,
       data: toGigResponse({
@@ -128,11 +128,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticate, validateBody(createGigSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const body = req.body as z.infer<typeof createGigSchema>;
-    const gig = createGig({
+    const gig = await createGig({
       ...body,
       createdBy: req.user!.userId,
     });
-    const creatorUser = getUserById(gig.created_by);
+    const creatorUser = await getUserById(gig.created_by);
     res.status(201).json({
       success: true,
       data: toGigResponse({
@@ -152,11 +152,11 @@ router.put(
   validateBody(updateGigSchema),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const gig = updateGig(req.params.id, req.user!.userId, req.body as z.infer<typeof updateGigSchema>);
+      const gig = await updateGig(req.params.id, req.user!.userId, req.body as z.infer<typeof updateGigSchema>);
       if (!gig) {
         return res.status(404).json({ success: false, error: 'Gig not found or not owner' });
       }
-      const creatorUser = getUserById(gig.created_by);
+      const creatorUser = await getUserById(gig.created_by);
       res.json({
         success: true,
         data: toGigResponse({
@@ -173,7 +173,7 @@ router.put(
 
 router.delete('/:id', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const ok = deleteGig(req.params.id, req.user!.userId);
+    const ok = await deleteGig(req.params.id, req.user!.userId);
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Gig not found or not owner' });
     }
