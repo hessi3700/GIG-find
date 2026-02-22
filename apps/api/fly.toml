@@ -1,0 +1,29 @@
+# Gig Finder API — deploy with: fly launch (first time) then fly deploy
+# From repo root: cd apps/api && fly launch --no-deploy, then add volume (see DEPLOY.md)
+app = 'gig-find-api'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PORT = '3000'
+  DATABASE_PATH = '/data/gigfind.db'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# After creating a volume: fly volumes create data --size 1 --region <region>
+# Uncomment and set region to match your volume:
+# [mounts]
+#   source = "data"
+#   destination = "/data"
