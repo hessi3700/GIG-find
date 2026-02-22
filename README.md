@@ -1,82 +1,78 @@
 # Gig Finder
 
-A resume-ready gig board: post gigs, apply, search/filter, and message. Built with **MERN-style stack + TypeScript** (Express, React, Node.js) and a **file-based SQLite database** by default.
+A full-stack gig board: **post gigs**, **apply**, **search & filter**, and **message** between gig owners and applicants. Built with Express, React, TypeScript, and SQLite (or Cloudflare D1 when deployed to Workers).
 
 **Built by [HessiKz](https://github.com/HessiKz)**
 
-## Deploy online
+---
 
-To host the app online: **API on [Cloudflare Workers](https://workers.cloudflare.com)** (D1 database) or **Fly.io** (SQLite file), plus **frontend on [Cloudflare Pages](https://pages.cloudflare.com)**. Step-by-step: **[DEPLOY.md](DEPLOY.md)**.
+## Quick links
+
+- **Run locally** → [Normal mode](#normal-mode-run-everything-locally) (one command)
+- **Deploy online** → [DEPLOY.md](DEPLOY.md) (Cloudflare Workers + D1, or Fly.io; frontend on Cloudflare Pages or GitHub Pages)
+
+---
 
 ## Features
 
-- **CRUD**: Create, read, update, delete gigs and applications
-- **Authentication**: JWT-based register/login and protected routes
-- **Relationships**: Users have many gigs; gigs have many applications; messaging between gig owners and applicants
-- **Search & filter**: By category, min/max pay, and text search
-- **Database**: Single SQLite file (`data/gigfind.db`) — no MongoDB required for local dev
-- **Dual run modes**: Normal (single machine) and Cloudflare (API on Workers, frontend on Pages)
+| Area | What you get |
+|------|----------------|
+| **Auth** | JWT register/login, protected routes |
+| **Gigs** | CRUD, list with filters (category, pay range, search), “my gigs” |
+| **Applications** | Apply to gigs, list by gig (owner), list mine, accept/reject |
+| **Messages** | Conversations between gig owners and applicants |
+| **Data** | SQLite file locally; [Cloudflare D1](https://developers.cloudflare.com/d1/) when deployed to Workers |
+| **Modes** | Single-machine dev (`npm start`) or deploy API + frontend separately |
+
+---
 
 ## Tech stack
 
-- **Backend**: Node.js, Express, TypeScript, SQLite (better-sqlite3), JWT, Zod
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, React Router
-- **Deploy**: Cloudflare Workers (API), Cloudflare Pages (frontend)
+- **Backend**: Node.js, Express, TypeScript, JWT, Zod. DB: **SQLite** (better-sqlite3) locally, **D1** on Workers.
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, React Router.
+- **Deploy**: API → Cloudflare Workers (D1) or Fly.io (SQLite). Frontend → Cloudflare Pages or GitHub Pages.
 
 ---
 
 ## Normal mode (run everything locally)
 
-Run both the API and the web app on one machine with a single command.
+One command runs the API and the web app. The API uses a **SQLite file** (`apps/api/data/gigfind.db`); no separate database server.
 
 ### Prerequisites
 
-- Node.js 18+
-
-No MongoDB or external database: the app uses a **SQLite database file** (`data/gigfind.db`) created automatically in the project.
+- **Node.js 18+**
 
 ### Setup
 
-1. Clone the repo and install dependencies:
+1. **Clone and install**
 
    ```bash
+   git clone https://github.com/YOUR_USERNAME/GIG-find.git
    cd GIG-find
    npm install
    ```
 
-   If you see a "Could not locate the bindings file" error when starting the API, rebuild the SQLite native addon: `npm rebuild better-sqlite3`.
+   If the API fails with “Could not locate the bindings file”, run: `npm rebuild better-sqlite3`.
 
-2. **API env** – In `apps/api`, create `.env`:
+2. **API environment** – In `apps/api`, create `.env`:
 
    ```env
-   # Optional: custom path for the SQLite file (default: ./data/gigfind.db)
-   # DATABASE_PATH=./data/gigfind.db
-
-   # Required: secret key for signing JWT tokens (see "How to get the JWT key" below)
    JWT_SECRET=your-generated-secret-at-least-32-chars
-
    PORT=3000
    ```
 
-3. **How to get the JWT key**
+   Optional: `DATABASE_PATH=./data/gigfind.db` to change the DB location.
 
-   Generate a random secret and set it as `JWT_SECRET` in `apps/api/.env`:
+3. **JWT secret** – Generate a random value (do not commit it):
 
-   **Option A – Node:**
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   # or: openssl rand -base64 32
    ```
-   Copy the output into `.env` as `JWT_SECRET=<paste-here>`.
 
-   **Option B – OpenSSL:**
-   ```bash
-   openssl rand -base64 32
-   ```
-   Copy the output into `.env` as `JWT_SECRET=<paste-here>`.
+   Put the output in `apps/api/.env` as `JWT_SECRET=<paste-here>`.
 
-   Use a long, random value (at least 32 characters). Do not commit `.env` or share the key.
-
-4. **Frontend env** (optional) – If you run the API on port 3000, the Vite dev server proxies `/api` to it. To point at another API URL, create `apps/web/.env`:
+4. **Frontend** – Default: Vite proxies `/api` to the API. To use another API URL, set `apps/web/.env`:
 
    ```env
    VITE_API_URL=http://localhost:3000
@@ -84,93 +80,76 @@ No MongoDB or external database: the app uses a **SQLite database file** (`data/
 
 ### Run
 
-From the repo root:
+From the **repo root**:
 
 ```bash
 npm start
 ```
 
-- API: http://localhost:3000  
-- Web: http://localhost:5173  
+- **API**: http://localhost:3000  
+- **Web**: http://localhost:5173  
 
-Use the web app at http://localhost:5173; it will talk to the API via the proxy (or `VITE_API_URL` if set).
+Open http://localhost:5173 and use the app; it talks to the API automatically.
 
 ### Seed example data
 
-To fill the database with lots of example users, gigs, applications, and messages:
+Load 50 users, 150 gigs, 350 applications, and 300 messages (all seed users use password **`password123`**):
 
 ```bash
 cd apps/api
 npm run seed
 ```
 
-This creates 50 users, 150 gigs, 350 applications, and 300 messages. **All seed users have password `password123`** — you can log in with any seed user email (e.g. from the Browse gigs list) to try the app.
+Log in with any seed user email (e.g. from the gig list) and password `password123`.
 
 ---
 
-## Cloudflare mode (deploy backend and frontend separately)
+## Deploy (Cloudflare Workers + frontend)
 
-- **Backend** → Cloudflare Workers  
-- **Frontend** → Cloudflare Pages  
-- **Database** → For Workers, use a DB that works in that environment (e.g. Cloudflare D1 or an external API). Local/normal mode uses the SQLite file.
+Use **Cloudflare Workers + D1** for the API and **Cloudflare Pages** or **GitHub Pages** for the frontend. Full steps: **[DEPLOY.md](DEPLOY.md)**.
 
-### Backend (Workers)
+### API (Workers + D1)
 
-1. In `apps/api`:
+1. In `apps/api`: create a D1 database, wire it in `wrangler.toml`, apply schema and secrets:
 
    ```bash
    cd apps/api
-   npm install
-   ```
-
-2. Create a D1 database, add its `database_id` to `wrangler.toml` (see [DEPLOY.md](DEPLOY.md)), apply the schema, and set `JWT_SECRET`:
-
-   ```bash
    npx wrangler d1 create gigfind-db
-   # Edit wrangler.toml with the database_id, then:
+   # Add the database_id to wrangler.toml, then:
    npx wrangler d1 execute gigfind-db --remote --file=./src/db/schema.sql
    npx wrangler secret put JWT_SECRET
    ```
 
-3. Deploy:
+2. Deploy:
 
    ```bash
    npx wrangler deploy
    ```
 
-   Note the Worker URL (e.g. `https://gig-find-api.<your-subdomain>.workers.dev`).
+   Use the Worker URL (e.g. `https://gig-find-api.<your-subdomain>.workers.dev`) as the frontend’s API base.
+
+**Optional – seed D1 with example data** (same as local seed; password `password123`):
+
+```bash
+cd apps/api
+npm run seed:d1:gen
+npx wrangler d1 execute gigfind-db --remote --file=seed-d1.sql
+```
 
 ### Frontend (Pages)
 
-1. In `apps/web`:
+- **Cloudflare Pages**: Connect the repo, set root to `apps/web`, build command `npm run build`, output `dist`, and add env var `VITE_API_URL` = your Worker URL. See [DEPLOY.md](DEPLOY.md).
+- **GitHub Pages**: From repo root, set API URL and repo name, then run the deploy script:
 
-   ```bash
-   cd apps/web
-   npm install
-   ```
+  ```bash
+  # Project site (https://<user>.github.io/<repo>/)
+  GITHUB_PAGES_REPO=GIG-find npm run deploy:pages
 
-2. Set the API URL for the build (use your Worker URL):
+  # User site (https://<user>.github.io/)
+  npm run deploy:pages
+  ```
 
-   ```bash
-   export VITE_API_URL=https://gig-find-api.<your-subdomain>.workers.dev
-   npm run build
-   ```
-
-3. Deploy to Cloudflare Pages:
-
-   - **Option A – Git**: Push the repo to GitHub; in Cloudflare Dashboard → Pages → Create project → Connect to Git. Set **Root directory** to `apps/web`, **Build command** to `npm run build`, **Build output** to `dist`. Add **Environment variable** `VITE_API_URL` = your Worker URL (for production and previews).
-
-   - **Option B – Wrangler**: From repo root, deploy the built output:
-
-     ```bash
-     cd apps/web && npm run build && npx wrangler pages deploy dist --project-name=gig-find-web
-     ```
-
-4. After the first deploy, in Pages → Settings → Environment variables, set `VITE_API_URL` to your Worker URL and redeploy so the frontend uses the correct API.
-
-### CORS
-
-The API allows all origins in development. For production, you can restrict CORS in `apps/api/src/app.ts` to your Pages URL and custom domain if needed.
+  Then in the repo: **Settings → Pages → Source**: branch `gh-pages`, folder `/ (root)`.
 
 ---
 
@@ -178,42 +157,57 @@ The API allows all origins in development. For production, you can restrict CORS
 
 ```
 GIG-find/
-├── package.json          # Workspaces; npm start runs api + web
-├── .env.example
+├── package.json              # Workspaces; npm start runs api + web
+├── scripts/
+│   └── deploy-pages.mjs      # Build web and push to gh-pages branch
 ├── apps/
-│   ├── api/              # Express API (Node + Cloudflare Worker)
+│   ├── api/                  # Express API (Node or Cloudflare Worker)
 │   │   ├── src/
-│   │   │   ├── index.ts  # Node entry (npm run dev)
-│   │   │   ├── worker.ts  # Worker entry (wrangler deploy)
+│   │   │   ├── index.ts      # Node entry (npm run dev / npm start)
+│   │   │   ├── worker.ts     # Worker entry (wrangler deploy)
 │   │   │   ├── app.ts
-│   │   │   ├── config/
-│   │   │   ├── models/
+│   │   │   ├── config/       # DB (file SQLite)
+│   │   │   ├── db/            # Schema, repo, seed, D1 seed generator
 │   │   │   ├── routes/
-│   │   │   └── middleware/
-│   │   └── wrangler.toml
-│   └── web/              # React SPA (Vite)
+│   │   │   ├── middleware/
+│   │   │   └── fetch-to-express.ts  # Worker request adapter
+│   │   ├── wrangler.toml     # D1 binding, secrets
+│   │   └── seed-d1.sql       # Generated D1 seed (npm run seed:d1:gen)
+│   └── web/                  # React SPA (Vite)
 │       ├── src/
-│       │   ├── api/
+│       │   ├── api/          # API client
 │       │   ├── components/
 │       │   ├── context/
 │       │   └── pages/
 │       └── vite.config.ts
+└── DEPLOY.md                 # Step-by-step deploy guide
 ```
 
 ---
 
 ## API overview
 
-- `POST /api/auth/register`, `POST /api/auth/login` – Auth (returns JWT)
-- `GET /api/users/me`, `GET /api/users/:id` – Current user / public profile
-- `GET /api/gigs` – List gigs (query: `category`, `minPay`, `maxPay`, `search`, `page`, `limit`)
-- `GET /api/gigs/mine` – My gigs (authenticated)
-- `GET /api/gigs/:id`, `POST /api/gigs`, `PUT /api/gigs/:id`, `DELETE /api/gigs/:id` – Gig CRUD
-- `POST /api/gigs/:gigId/applications`, `GET /api/gigs/:gigId/applications` – Apply / list applications (owner)
-- `GET /api/applications/me`, `PATCH /api/applications/:id` – My applications / update status
-- `GET /api/messages`, `GET /api/messages/:conversationId`, `POST /api/messages` – Messaging
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/register` | Register (email, password, name) |
+| `POST` | `/api/auth/login` | Login (email, password) → JWT |
+| `GET`  | `/api/users/me` | Current user (auth) |
+| `GET`  | `/api/users/:id` | Public user profile |
+| `GET`  | `/api/gigs` | List gigs (`category`, `minPay`, `maxPay`, `search`, `page`, `limit`) |
+| `GET`  | `/api/gigs/mine` | My gigs (auth) |
+| `GET`  | `/api/gigs/:id` | Gig by ID |
+| `POST` | `/api/gigs` | Create gig (auth) |
+| `PUT`  | `/api/gigs/:id` | Update gig (auth, owner) |
+| `DELETE` | `/api/gigs/:id` | Delete gig (auth, owner) |
+| `POST` | `/api/gigs/:gigId/applications` | Apply to gig (auth) |
+| `GET`  | `/api/gigs/:gigId/applications` | List applications (auth, owner) |
+| `GET`  | `/api/applications/me` | My applications (auth) |
+| `PATCH` | `/api/applications/:id` | Update status (auth, gig owner) |
+| `GET`  | `/api/messages` | My conversations (auth) |
+| `GET`  | `/api/messages/:conversationId` | Messages in conversation (auth) |
+| `POST` | `/api/messages` | Send message (auth) |
 
-All responses are JSON; errors use `{ success: false, error: string }`.
+Responses are JSON. Errors: `{ "success": false, "error": "message" }`.
 
 ---
 
